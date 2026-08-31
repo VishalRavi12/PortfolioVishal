@@ -76,9 +76,63 @@ function bioParagraphs(lines) {
   return out;
 }
 
+// Live count of public, non-forked GitHub repos. This is a static site, so
+// it is a plain client-side fetch — cached for 12h so a visitor costs one
+// request, and silent on failure (rate limit, offline, blocked) rather than
+// showing a broken tile.
+function useGithubRepoCount(profileUrl) {
+  const [count, setCount] = React.useState(null);
+  React.useEffect(() => {
+    const user = (/github\.com\/([^/?#]+)/.exec(profileUrl || '') || [])[1];
+    if (!user) return;
+    const KEY = `gh-repos:${user}`;
+    const TTL = 12 * 60 * 60 * 1000;
+
+    try {
+      const hit = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (hit && typeof hit.n === 'number' && Date.now() - hit.t < TTL) {
+        setCount(hit.n);
+        return;
+      }
+    } catch (e) { /* private mode, or storage disabled */ }
+
+    let cancelled = false;
+    fetch(`https://api.github.com/users/${encodeURIComponent(user)}/repos?per_page=100&type=owner&sort=updated`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((list) => {
+        if (cancelled || !Array.isArray(list)) return;
+        // Forks are other people's work — they should not inflate the count.
+        const n = list.filter((r) => !r.fork).length;
+        setCount(n);
+        try { localStorage.setItem(KEY, JSON.stringify({ n, t: Date.now() })); } catch (e) {}
+      })
+      .catch(() => { /* leave the tile on its placeholder */ });
+    return () => { cancelled = true; };
+  }, [profileUrl]);
+  return count;
+}
+
 // ── About ──────────────────────────────────────────────────────────────
 function AppAbout() {
   const d = D();
+  const repos = useGithubRepoCount(d.links && d.links.github);
+
+  // Every figure is derived, so adding a project, paper, award or language
+  // to data.js moves the counter with no edit here.
+  const stats = React.useMemo(() => {
+    const ach = d.achievements || [];
+    const pubs = ach.filter((a) => a.type === 'Publication');
+    const awards = ach.filter((a) => a.type === 'Award');
+    const langs = (d.skills && d.skills.Languages) || [];
+    const acronym = (s) => (/\(([A-Z]{2,})\)/.exec(s || '') || [])[1];
+    return [
+      { k: 'PROJECTS', v: (d.projects || []).length, sub: 'shipped' },
+      { k: 'GITHUB', v: repos == null ? '·' : repos, sub: 'public repos' },
+      { k: 'PUBLICATIONS', v: pubs.length, sub: (pubs.length === 1 && acronym(pubs[0].org)) || 'peer-reviewed' },
+      { k: 'AWARDS', v: awards.length, sub: awards.length === 1 ? awards[0].title.replace(/\s+Project$/, '') : 'received' },
+      { k: 'LANGUAGES', v: langs.length, sub: 'fluent' },
+    ];
+  }, [d, repos]);
   return (
     <div style={appPad}>
       {/* ASCII banner */}
@@ -144,12 +198,7 @@ function AppAbout() {
 
       <TuiDivider label="QUICK STATS" />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-        {[
-          { k: 'PROJECTS', v: '4+', sub: 'shipped' },
-          { k: 'PUBLICATIONS', v: '1', sub: 'IJFMR' },
-          { k: 'AWARDS', v: '1', sub: 'Best Innovative' },
-          { k: 'LANGUAGES', v: '9+', sub: 'fluent' },
-        ].map((s) => (
+        {stats.map((s) => (
           <Box key={s.k} style={{ margin: 0, padding: '10px 12px' }}>
             <div style={{ color: 'var(--fg-mute)', fontSize: 10, letterSpacing: '0.1em' }}>{s.k}</div>
             <div style={{ color: 'var(--accent)', fontSize: 22, fontWeight: 700, textShadow: 'var(--text-glow)', lineHeight: 1.1 }}>{s.v}</div>
