@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VishalRavi's Portfolio OS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" />
+  <style>
+    /* Matches the phosphor-light wallpaper base so there is no dark flash
+       before React mounts. Use #020503 if switching the default back to dark. */
+    html, body, #root { margin: 0; padding: 0; height: 100%; background: #e6f0e0; font-family: 'JetBrains Mono', monospace; overscroll-behavior: none; }
+    *, *::before, *::after { box-sizing: border-box; }
+    /* Cursor on click-targets inside the OS */
+    [data-os-desktop] { cursor: default; }
+    /* Scrollbars inside OS windows — keep them subtle */
+    [data-os-desktop] *::-webkit-scrollbar { width: 8px; height: 8px; }
+    [data-os-desktop] *::-webkit-scrollbar-track { background: transparent; }
+    [data-os-desktop] *::-webkit-scrollbar-thumb { background: rgba(127,127,127,0.25); border-radius: 0; }
+    [data-os-desktop] *::-webkit-scrollbar-thumb:hover { background: rgba(127,127,127,0.45); }
+  </style>
+
+  <!-- Data first (plain JS, no JSX) -->
+  <script src="os/data.js"></script>
+  <script src="os/themes.js"></script>
+  <script src="os/image-slot.js"></script>
+
+  <!-- React -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- OS components (JSX, transpiled by Babel).
+       Load terminal before apps/os so window.AppTerminal exists when os.jsx
+       first renders. boot.jsx must precede os.jsx since os.jsx references
+       BootSequence / LoginScreen directly (not via window.*). -->
+  <script type="text/babel" src="os/window-manager.jsx"></script>
+  <script type="text/babel" src="os/terminal.jsx"></script>
+  <script type="text/babel" src="os/apps.jsx"></script>
+  <script type="text/babel" src="os/boot.jsx"></script>
+  <script type="text/babel" src="os/os.jsx"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Mount: single OS instance. To switch flavor, change flavorKey to
+       'phosphor' | 'amber' | 'neo'. bootMode: 'full' | 'login' | 'none'. -->
+  <script type="text/babel">
+    // Babel transforms text/babel scripts asynchronously, so window.VishalOS
+    // may not exist on first tick — poll briefly.
+    (function mount() {
+      if (!window.VishalOS) { setTimeout(mount, 30); return; }
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(
+        <window.VishalOS
+          flavorKey="phosphor"
+          initialMode="light"
+          bootMode="full"
+          autoOpen={[]}
+        />
+      );
+    })();
+  </script>
+</body>
+</html>
