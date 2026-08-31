@@ -82,7 +82,7 @@ function AppAbout() {
   return (
     <div style={appPad}>
       {/* ASCII banner */}
-      <pre style={{ margin: 0, color: 'var(--accent)', textShadow: 'var(--text-glow)', fontSize: 11, lineHeight: 1.1, overflowX: 'auto' }}>
+      <pre style={{ margin: 0, color: 'var(--accent)', textShadow: 'var(--text-glow)', fontSize: 'clamp(7px, 2.2vw, 11px)', lineHeight: 1.1, overflowX: 'auto' }}>
 {`  ██╗   ██╗██╗███████╗██╗  ██╗ █████╗ ██╗
   ██║   ██║██║██╔════╝██║  ██║██╔══██╗██║
   ██║   ██║██║███████╗███████║███████║██║
@@ -91,10 +91,10 @@ function AppAbout() {
     ╚═══╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝`}
       </pre>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 18, marginTop: 18, alignItems: 'start' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, marginTop: 18, alignItems: 'flex-start' }}>
         {/* Avatar */}
         <div style={{
-          width: 120, height: 120,
+          width: 120, height: 120, flex: '0 0 120px',
           border: '1px solid var(--border-bright)',
           background: 'var(--bg-inset)',
           overflow: 'hidden',
@@ -106,14 +106,14 @@ function AppAbout() {
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: 'contrast(1.05) saturate(0.95)' }}
           />
         </div>
-        <div>
+        <div style={{ flex: '1 1 260px', minWidth: 0 }}>
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent)', textShadow: 'var(--text-glow)', letterSpacing: '0.02em' }}>
             {d.user.name}
           </div>
           <div style={{ color: 'var(--fg-dim)', fontSize: 12, marginTop: 4 }}>
             &gt; {d.user.title}
           </div>
-          <div style={{ color: 'var(--fg-mute)', fontSize: 11, marginTop: 4 }}>
+          <div style={{ color: 'var(--fg-mute)', fontSize: 11, marginTop: 4, wordBreak: 'break-word' }}>
             [ {d.user.location} · {d.user.email} ]
           </div>
           <div style={{ marginTop: 10, fontSize: 12, color: 'var(--fg)', borderLeft: '2px solid var(--accent)', paddingLeft: 10 }}>
@@ -127,7 +127,7 @@ function AppAbout() {
           single pre-wrapped column left most of it empty. */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
         gap: 20,
         alignItems: 'start',
       }}>
@@ -670,7 +670,7 @@ const EASE = 'cubic-bezier(.22,.68,.28,1)';
 
 // A section rendered with the same chrome as a real OSWindow, so the deck
 // reads as a desktop full of already-open windows.
-function DeckPanel({ id, title, icon, index, active, panelRef, scrollRef, onFocusSection, children }) {
+function DeckPanel({ id, title, icon, index, active, phone, panelRef, scrollRef, onFocusSection, children }) {
   const [open, setOpen] = React.useState(index === 0);
   const [hover, setHover] = React.useState(false);
   // Hovering lifts a panel the same way scrolling to it does, so pointing at
@@ -717,8 +717,10 @@ function DeckPanel({ id, title, icon, index, active, panelRef, scrollRef, onFocu
         // The section-to-section animation: the panel you are on sits at full
         // size and brightness while the rest shrink back, so it is obvious
         // which section you are heading into.
-        opacity: open ? (lifted ? 1 : 0.55) : 0,
-        transform: open ? `scale(${lifted ? 1 : 0.95})` : 'translateY(26px) scale(0.93)',
+        opacity: open ? (lifted ? 1 : (phone ? 0.72 : 0.55)) : 0,
+        transform: open
+          ? `scale(${lifted ? 1 : (phone ? 0.99 : 0.95)})`
+          : `translateY(26px) scale(${phone ? 0.98 : 0.93})`,
         // Shrink toward the top edge so a panel's position stays predictable.
         transformOrigin: 'center top',
         transition: `opacity .45s ${EASE}, transform .45s ${EASE}, box-shadow .35s ${EASE}, border-color .35s ${EASE}`,
@@ -748,7 +750,7 @@ function DeckPanel({ id, title, icon, index, active, panelRef, scrollRef, onFocu
       {/* The apps were sized for small floating windows; at full deck width
           that text is too small to read comfortably. zoom scales the whole
           subtree — unlike transform it reflows, so nothing overflows. */}
-      <div style={{ background: 'var(--surface)', zoom: 1.15 }}>{children}</div>
+      <div style={{ background: 'var(--surface)', zoom: phone ? 1 : 1.15 }}>{children}</div>
     </section>
   );
 }
@@ -789,7 +791,7 @@ function DeckProjects() {
   );
 }
 
-function ShowcaseDeck({ navRef, mode }) {
+function ShowcaseDeck({ navRef, mode, phone, narrow }) {
   const scrollRef = React.useRef(null);
   const refs = React.useRef({});
   const [active, setActive] = React.useState(DECK_SECTIONS[0].id);
@@ -885,8 +887,8 @@ function ShowcaseDeck({ navRef, mode }) {
     <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none' }}>
       {/* Section rail — where you are, and a click to jump */}
       <div style={{
-        position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-        zIndex: 3, display: 'flex', flexDirection: 'column', gap: 8,
+        position: 'absolute', right: phone ? 4 : 10, top: '50%', transform: 'translateY(-50%)',
+        zIndex: 3, display: 'flex', flexDirection: 'column', gap: phone ? 12 : 8,
         alignItems: 'flex-end', pointerEvents: 'auto',
       }}>
         {DECK_SECTIONS.map((s, i) => {
@@ -904,7 +906,10 @@ function ShowcaseDeck({ navRef, mode }) {
               onBlur={() => setHoverId((h) => (h === s.id ? null : h))}
               style={{
                 display: 'flex', alignItems: 'center', gap: 7,
-                background: 'transparent', border: 0, padding: '2px 0',
+                background: 'transparent', border: 0,
+                // Tablets are touch devices too, so the hit area has to grow
+                // wherever the rail is drawn as bare dots, not just on phones.
+                padding: narrow ? '13px 8px' : '2px 0',
                 cursor: 'pointer', fontFamily: 'var(--font-mono)',
                 color: on || hot ? 'var(--accent)' : 'var(--fg-mute)',
                 textShadow: on || hot ? 'var(--text-glow)' : 'none',
@@ -918,9 +923,10 @@ function ShowcaseDeck({ navRef, mode }) {
                 transition: `opacity .25s ${EASE}, color .25s ${EASE}, transform .25s ${EASE}`,
               }}
             >
-              <span style={{ whiteSpace: 'nowrap' }}>{on || hot ? s.label : ''}</span>
+              <span style={{ whiteSpace: 'nowrap' }}>{!narrow && (on || hot) ? s.label : ''}</span>
               <span style={{
-                width: on ? 22 : (hot ? 18 : 12), height: 2,
+                width: phone ? (on ? 14 : 8) : (on ? 22 : (hot ? 18 : 12)),
+                height: phone ? 3 : 2,
                 background: on || hot ? 'var(--accent)' : 'var(--fg-mute)',
                 boxShadow: on || hot ? '0 0 8px var(--accent-glow)' : 'none',
                 transition: `width .3s ${EASE}, background .25s ${EASE}`,
@@ -947,8 +953,12 @@ function ShowcaseDeck({ navRef, mode }) {
         style={{
           position: 'absolute', inset: 0,
           overflowY: 'auto', overflowX: 'hidden',
-          padding: `14px 88px ${padBottom}px 14px`,
-          display: 'flex', flexDirection: 'column', gap: 18,
+          padding: phone
+            ? `10px 22px ${padBottom}px 10px`
+            : (narrow
+              ? `14px 30px ${padBottom}px 14px`
+              : `14px 88px ${padBottom}px 14px`),
+          display: 'flex', flexDirection: 'column', gap: phone ? 12 : 18,
           pointerEvents: 'auto',
           // Deliberately not scroll-behavior:smooth — that would make the
           // wheel feel floaty. goTo() asks for smooth explicitly instead.
@@ -962,6 +972,7 @@ function ShowcaseDeck({ navRef, mode }) {
             icon={s.icon}
             index={i}
             active={s.id === active}
+            phone={phone}
             panelRef={refs.current[s.id]}
             scrollRef={scrollRef}
             onFocusSection={setActive}

@@ -7,6 +7,40 @@
 
 const { useState, useRef, useEffect, useCallback, useMemo } = React;
 
+// ── Viewport ────────────────────────────────────────────────────────────
+// The UI is built from inline styles, so CSS media queries cannot reach it.
+// This hook gives components the current viewport instead, and everything
+// responsive keys off `phone`.
+const PHONE_MAX = 760;
+// Between the two, a tablet still gets the desktop metaphor and full-size
+// text, but not the wide-screen rail labels that would crowd the panels.
+const NARROW_MAX = 1024;
+
+function useViewport() {
+  const read = () => ({
+    w: typeof window !== 'undefined' ? window.innerWidth : 1280,
+    h: typeof window !== 'undefined' ? window.innerHeight : 800,
+  });
+  const [vp, setVp] = useState(read);
+  useEffect(() => {
+    let raf = 0;
+    const onResize = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => { raf = 0; setVp(read()); });
+    };
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+  return { ...vp, phone: vp.w <= PHONE_MAX, narrow: vp.w <= NARROW_MAX };
+}
+
+window.useViewport = useViewport;
+
 // ── Hook ────────────────────────────────────────────────────────────────
 function useWindowManager(initial = []) {
   const [windows, setWindows] = useState(() => initial.map((w, i) => ({

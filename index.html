@@ -11,6 +11,15 @@
     /* Matches the phosphor-light wallpaper base so there is no dark flash
        before React mounts. Use #020503 if switching the default back to dark. */
     html, body, #root { margin: 0; padding: 0; height: 100%; background: #e6f0e0; font-family: 'JetBrains Mono', monospace; overscroll-behavior: none; }
+    /* Mobile browsers shrink the visible area as their toolbars appear; dvh
+       tracks that, so the OS chrome is never cut off by the address bar. */
+    @supports (height: 100dvh) {
+      html, body, #root { height: 100dvh; }
+    }
+    /* Stop iOS from inflating text in the monospace layout. */
+    html { -webkit-text-size-adjust: 100%; }
+    /* The deck is the scroller; the page itself must never scroll. */
+    body { overflow: hidden; }
     *, *::before, *::after { box-sizing: border-box; }
     /* Cursor on click-targets inside the OS */
     [data-os-desktop] { cursor: default; }

@@ -116,7 +116,7 @@ function CrtOverlay({ enabled, opacity }) {
 }
 
 // ── Top bar ────────────────────────────────────────────────────────────
-function TopBar({ flavor, mode, activeTitle, onToggleMode, onCycleFlavor }) {
+function TopBar({ flavor, mode, activeTitle, onToggleMode, onCycleFlavor, phone }) {
   const flavorMeta = window.OS_FLAVORS[flavor];
   const [now, setNow] = React.useState(new Date());
   React.useEffect(() => {
@@ -141,25 +141,27 @@ function TopBar({ flavor, mode, activeTitle, onToggleMode, onCycleFlavor }) {
       userSelect: 'none',
       zIndex: 100,
     }}>
-      <span style={{ color: 'var(--accent)', textShadow: 'var(--text-glow)', fontWeight: 700 }}>
+      <span style={{ color: 'var(--accent)', textShadow: 'var(--text-glow)', fontWeight: 700, whiteSpace: 'nowrap' }}>
         ▸ {flavorMeta?.name || 'OS'}
       </span>
-      <span style={{ color: 'var(--fg-mute)' }}>|</span>
-      <span style={{ color: 'var(--fg-dim)' }}>{activeTitle || 'desktop'}</span>
+      {/* On a phone the bar only has room for the essentials: the toggles
+          keep their glyphs but drop their labels, and the date goes. */}
+      {!phone && <span style={{ color: 'var(--fg-mute)' }}>|</span>}
+      {!phone && <span style={{ color: 'var(--fg-dim)' }}>{activeTitle || 'desktop'}</span>}
       <span style={{ flex: 1 }} />
-      <span title="cycle flavor" onClick={onCycleFlavor} style={{ cursor: 'pointer', color: 'var(--fg-dim)' }}
+      <span title="cycle flavor" onClick={onCycleFlavor} style={{ cursor: 'pointer', color: 'var(--fg-dim)', whiteSpace: 'nowrap' }}
         onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)'; }}
         onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--fg-dim)'; }}>
-        ◈ {flavor}
+        ◈{phone ? '' : ` ${flavor}`}
       </span>
-      <span title="toggle dark/light" onClick={onToggleMode} style={{ cursor: 'pointer', color: 'var(--fg-dim)' }}
+      <span title="toggle dark/light" onClick={onToggleMode} style={{ cursor: 'pointer', color: 'var(--fg-dim)', whiteSpace: 'nowrap' }}
         onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)'; }}
         onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--fg-dim)'; }}>
-        {mode === 'dark' ? '◐' : '◑'} {mode}
+        {mode === 'dark' ? '◐' : '◑'}{phone ? '' : ` ${mode}`}
       </span>
-      <span style={{ color: 'var(--fg-mute)' }}>|</span>
-      <span style={{ color: 'var(--fg-dim)' }}>{date}</span>
-      <span style={{ color: 'var(--accent)', textShadow: 'var(--text-glow)' }}>{time}</span>
+      {!phone && <span style={{ color: 'var(--fg-mute)' }}>|</span>}
+      {!phone && <span style={{ color: 'var(--fg-dim)' }}>{date}</span>}
+      <span style={{ color: 'var(--accent)', textShadow: 'var(--text-glow)', whiteSpace: 'nowrap' }}>{time}</span>
     </div>
   );
 }
@@ -274,7 +276,7 @@ function SnapPreview({ side }) {
 }
 
 // ── Taskbar ────────────────────────────────────────────────────────────
-function Taskbar({ apps, windows, activeId, onLaunch, onClickWindow, onMenu }) {
+function Taskbar({ apps, windows, activeId, onLaunch, onClickWindow, onMenu, phone }) {
   return (
     <div style={{
       height: 36, flex: '0 0 36px',
@@ -302,8 +304,9 @@ function Taskbar({ apps, windows, activeId, onLaunch, onClickWindow, onMenu }) {
         ▦ APPS
       </button>
 
-      {/* Quick launch */}
-      <div style={{ display: 'flex', gap: 2, padding: '0 6px', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)', marginLeft: 4 }}>
+      {/* Quick launch — dropped on phones, where the APPS menu covers it
+          and the row would crowd out the open-window buttons. */}
+      <div style={{ display: phone ? 'none' : 'flex', gap: 2, padding: '0 6px', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)', marginLeft: 4 }}>
         {['terminal', 'about', 'projects', 'contact'].map((k) => {
           const app = apps.find((a) => a.key === k);
           if (!app) return null;
@@ -424,6 +427,9 @@ function VishalOS({ flavorKey = 'phosphor', initialMode = 'dark', bootMode = 'fu
   // Populated by <ShowcaseDeck>; lets a desktop icon scroll the deck to its
   // section instead of making the visitor open a window to read anything.
   const deckNav = React.useRef(null);
+  const vp = window.useViewport();
+  const phone = vp.phone;
+  const narrow = vp.narrow;
 
   const themeStyle = window.osTheme(flavor, mode);
   const flavorMeta = window.OS_FLAVORS[flavor];
@@ -444,10 +450,19 @@ function VishalOS({ flavorKey = 'phosphor', initialMode = 'dark', bootMode = 'fu
   const launchApp = (key, extra = {}) => {
     const def = APP_DEFAULTS[key];
     if (!def) return;
+    // A window must never open larger than the desktop that holds it. On a
+    // phone there is no room to float one at all, so it opens full-screen.
+    const box = desktopRef.current;
+    const fit = { ...def };
+    if (box) {
+      fit.w = Math.min(def.w, box.offsetWidth - 16);
+      fit.h = Math.min(def.h, box.offsetHeight - 16);
+    }
+    if (phone) { fit.maximized = true; }
     if (key === 'terminal') {
-      wm.open({ appKey: 'terminal', ...def, singleton: false, ...extra });
+      wm.open({ appKey: 'terminal', ...fit, singleton: false, ...extra });
     } else {
-      wm.open({ appKey: key, ...def, ...extra });
+      wm.open({ appKey: key, ...fit, ...extra });
     }
   };
 
@@ -527,6 +542,7 @@ function VishalOS({ flavorKey = 'phosphor', initialMode = 'dark', bootMode = 'fu
       display: 'flex', flexDirection: 'column',
     }}>
       <TopBar
+        phone={phone}
         flavor={flavor} mode={mode} activeTitle={activeTitle}
         onToggleMode={() => setMode(mode === 'dark' ? 'light' : 'dark')}
         onCycleFlavor={() => {
@@ -546,10 +562,12 @@ function VishalOS({ flavorKey = 'phosphor', initialMode = 'dark', bootMode = 'fu
         }}>
         <Wallpaper flavor={flavor} mode={mode} />
 
-        {/* Desktop icons grid */}
+        {/* Desktop icons grid — hidden on phones, where the column would eat
+            half the screen. Everything stays reachable from the APPS menu,
+            and the deck already shows every section without opening one. */}
         <div style={{
           position: 'absolute', top: 12, left: 12, right: 12,
-          display: 'grid',
+          display: phone ? 'none' : 'grid',
           gridTemplateColumns: 'repeat(auto-fill, 78px)',
           gap: 6,
           maxWidth: 84 * 2,
@@ -579,6 +597,7 @@ function VishalOS({ flavorKey = 'phosphor', initialMode = 'dark', bootMode = 'fu
 
         {/* Watermark — kept in the icon column so the deck stays clear */}
         <div style={{
+          display: phone ? 'none' : 'block',
           position: 'absolute', bottom: 14, left: 14, width: 168,
           fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--fg-mute)',
           opacity: 0.55, pointerEvents: 'none',
@@ -591,9 +610,10 @@ function VishalOS({ flavorKey = 'phosphor', initialMode = 'dark', bootMode = 'fu
           <div>click an icon to jump · double-click to open</div>
         </div>
 
-        {/* Showcase deck — every section already open, right of the icons */}
-        <div style={{ position: 'absolute', left: 192, top: 0, right: 0, bottom: 0 }}>
-          <window.ShowcaseDeck navRef={deckNav} mode={mode} />
+        {/* Showcase deck — every section already open. It sits right of the
+            icon column on desktop, and takes the full width on a phone. */}
+        <div style={{ position: 'absolute', left: phone ? 0 : 192, top: 0, right: 0, bottom: 0 }}>
+          <window.ShowcaseDeck navRef={deckNav} mode={mode} phone={phone} narrow={narrow} />
         </div>
 
         {/* Windows */}
@@ -626,6 +646,7 @@ function VishalOS({ flavorKey = 'phosphor', initialMode = 'dark', bootMode = 'fu
       </div>
 
       <Taskbar
+        phone={phone}
         apps={APP_REGISTRY}
         windows={wm.windows}
         activeId={wm.activeId}
